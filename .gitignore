@@ -1,0 +1,16 @@
+.*
+!.gitignore
+!.gitattributes
+
+# Ignore all Python bytecode files and cache directories
+__pycache__/
+*.pyc
+
+# Device-specific config (device serials, screen regions, local scrcpy paths)
+# Regenerate with: python setup.py
+config.json
+
+# Runtime debug and screenshot output
+debug_*.png
+game_*.png
+*_debug_q*.png

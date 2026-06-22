@@ -1,0 +1,4 @@
+# Normalize line endings: store LF in the repo, check out CRLF on Windows / LF elsewhere.
+# This silences the "LF will be replaced by CRLF" warnings and keeps diffs clean
+# when the repo is used on both Windows and Mac/Linux.
+* text=auto
