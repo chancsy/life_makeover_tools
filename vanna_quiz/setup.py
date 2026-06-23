@@ -15,7 +15,7 @@ from common.lm_adb import get_adb, setup_scrcpy, read_common_config
 
 import json
 
-from utils.standalone.region_setup import RegionSetupTool
+from utils.tools.region_setup import RegionSetupTool
 
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), 'config.json')
 

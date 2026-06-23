@@ -12,18 +12,10 @@ Usage:
 
 import json as _json
 import subprocess
-import sys
 import time
 import os as _os
 
-# Wire up lib-utils once for all tools that import this module
-_LIB_UTILS = _os.path.normpath(
-    _os.path.join(_os.path.dirname(__file__), '..', '..', '..', 'scripts_collection', 'lib-utils')
-)
-if _LIB_UTILS not in sys.path:
-    sys.path.insert(0, _LIB_UTILS)
-
-from utils.standalone.adb_utils import AdbUtils  # noqa: E402  (import after path setup)
+from utils.standalone.adb_utils import AdbUtils
 
 # ---------------------------------------------------------------------------
 # Common config  (shared across all tools — scrcpy exe, bitrate, etc.)

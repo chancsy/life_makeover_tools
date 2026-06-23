@@ -30,7 +30,7 @@ def _color_hist(crop_bgr):
         hists.append(h)
     return hists
 
-from utils.standalone.region_setup import RegionSetupTool
+from utils.tools.region_setup import RegionSetupTool
 
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), 'config.json')
 
