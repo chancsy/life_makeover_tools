@@ -40,6 +40,11 @@ Running any plugin's `setup.py` will prompt for scrcpy config if not already set
 4. Run `setup.py` once per device to register screen regions → `<plugin>/config.json`
 5. Add an entry to this README
 
+## Credits
+
+**Vvanna Quiz** — question/answer bank sourced from the [Life Makeover Wiki](https://life-makeover.fandom.com/wiki/Shining_Journey/Vvanna_Quiz).
+Primary contributor: [Riblam](https://life-makeover.fandom.com/wiki/User:Riblam).
+
 ## Quick Start (any plugin)
 
 ```
