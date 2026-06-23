@@ -40,6 +40,24 @@ Running any plugin's `setup.py` will prompt for scrcpy config if not already set
 4. Run `setup.py` once per device to register screen regions → `<plugin>/config.json`
 5. Add an entry to this README
 
+## Dependencies
+
+### lib-utils
+
+The tools depend on [chancsy/lib-utils](https://github.com/chancsy/lib-utils), a shared utility library that provides ADB helpers, window capture, and the region setup GUI.
+
+Install directly from GitHub:
+
+```
+pip install git+https://github.com/chancsy/lib-utils.git
+```
+
+### Python packages
+
+Each tool has its own `MODULES.md` listing its specific pip packages.
+
+---
+
 ## Credits
 
 **Vvanna Quiz** — question/answer bank sourced from the [Life Makeover Wiki](https://life-makeover.fandom.com/wiki/Shining_Journey/Vvanna_Quiz).
