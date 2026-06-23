@@ -66,13 +66,23 @@ def _write_config(path, cfg):
 
 
 def load_regions_for_device(config_path, device_serial):
-    entry = _read_config(config_path).get('devices', {}).get(device_serial)
+    devices = _read_config(config_path).get('devices', {})
+    entry = devices.get(device_serial)
+    using_default = False
+    if entry is None and device_serial != 'default':
+        entry = devices.get('default')
+        using_default = entry is not None
     if entry is None:
         return None
     regions = {k: tuple(v) for k, v in entry['regions'].items()}
     size = entry.get('screen_size', ['?', '?'])
     name = entry.get('name', device_serial)
-    print(f'Recognized device "{name}" ({device_serial}) — {size[0]}×{size[1]}')
+    if using_default:
+        print(f'  [WARN] Device "{device_serial}" not in config — using "default" profile '
+              f'({name}, {size[0]}×{size[1]}). Regions may not match your screen exactly.')
+        print('         Run setup.py to register your device for accurate results.')
+    else:
+        print(f'Recognized device "{name}" ({device_serial}) — {size[0]}×{size[1]}')
     return regions
 
 

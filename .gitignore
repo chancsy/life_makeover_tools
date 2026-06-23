@@ -8,7 +8,7 @@ __pycache__/
 
 # Device-specific config (device serials, screen regions, local scrcpy paths)
 # Regenerate with: python setup.py
-config.json
+# config.json
 
 # Runtime debug and screenshot output
 debug_*.png

@@ -45,8 +45,10 @@ GRID_COLS = 6
 
 TAP_DELAY                = 0.03  # seconds between tapping card 1 and card 2
 LOOP_DELAY               = 0.03   # seconds after a successful link (game input processing time)
-RESHUFFLE_POLL           = 0.5   # seconds between polls when waiting for reshuffle
-RESHUFFLE_TIMEOUT        = 4.0   # tap reshuffle button after this many seconds without detected change
+RESHUFFLE_POLL           = 0.5   # scrcpy: seconds between reshuffle polls
+RESHUFFLE_TIMEOUT        = 4.0   # scrcpy: tap reshuffle button after this many seconds
+RESHUFFLE_POLL_ADB       = 3.0   # adb screencap: slower poll (screencap takes ~150ms)
+RESHUFFLE_TIMEOUT_ADB    = 8.0   # adb screencap: longer timeout to compensate
 HASH_THRESHOLD           = 12    # max perceptual hash distance to consider cards identical
 COLOR_SIM_THRESHOLD      = 0.74  # min HSV histogram correlation (0-1) to confirm same card type
                                   # scrcpy H.264 compression shifts HSV histograms; true pairs
@@ -67,14 +69,24 @@ def _read_config(path):
 
 
 def load_device_config(config_path, serial):
-    entry = _read_config(config_path).get('devices', {}).get(serial)
+    devices = _read_config(config_path).get('devices', {})
+    entry = devices.get(serial)
+    using_default = False
+    if entry is None and serial != 'default':
+        entry = devices.get('default')
+        using_default = entry is not None
     if entry is None:
         return None, None, None
     regions = {k: tuple(v) for k, v in entry['regions'].items()}
     name = entry.get('name', serial)
     size = entry.get('screen_size', ['?', '?'])
-    print(f'Recognized device "{name}" ({serial}) -- {size[0]}x{size[1]}')
-    empty_hist = entry.get('empty_hist')  # [[float,...]*180, [float,...]*256, [float,...]*256]
+    if using_default:
+        print(f'  [WARN] Device "{serial}" not in config — using "default" profile '
+              f'({name}, {size[0]}×{size[1]}). Regions may not match your screen exactly.')
+        print('         Run setup.py to register your device for accurate results.')
+    else:
+        print(f'Recognized device "{name}" ({serial}) -- {size[0]}x{size[1]}')
+    empty_hist = entry.get('empty_hist')
     if empty_hist is not None:
         empty_hist = [np.array(ch, dtype=np.float32).reshape(-1, 1) for ch in empty_hist]
         print('  Loaded empty-cell histogram from config.')
@@ -560,6 +572,9 @@ class GameAssistant:
         self._capture = capture or adb     # ScrcpyCapture or fallback to adb
         self._device_size = device_size    # (w, h) in device pixels — for tap coordinate mapping
         self._capture_size = None          # (w, h) of last screenshot — set by _take_screenshot
+        # Use slower poll/timeout when falling back to adb screencap (capture param is None)
+        self._reshuffle_poll    = RESHUFFLE_POLL    if capture else RESHUFFLE_POLL_ADB
+        self._reshuffle_timeout = RESHUFFLE_TIMEOUT if capture else RESHUFFLE_TIMEOUT_ADB
 
     def _to_device(self, cx, cy):
         """Convert screenshot pixel coords to device pixel coords for ADB tap."""
@@ -836,7 +851,7 @@ class GameAssistant:
                 timing_log.append((f'RESHUFFLE WAIT (pair {pacing.pair_num if pacing else "?"})',
                                    t_wait_start - t_game_start))
                 while True:
-                    time.sleep(RESHUFFLE_POLL)
+                    time.sleep(self._reshuffle_poll)
                     new_board = self._take_screenshot()
                     elapsed = time.perf_counter() - t_wait_start
                     diff = self.parser._board_diff(prev_board, new_board)
@@ -851,7 +866,7 @@ class GameAssistant:
                         grid, centers, _ = self._parse(screenshot)
                         self._print_grid(grid)
                         break
-                    if elapsed >= RESHUFFLE_TIMEOUT:
+                    if elapsed >= self._reshuffle_timeout:
                         print(f'Reshuffle timeout -- tapping button and waiting 1s (diff={diff:.2f}).')
                         if pacing:
                             pacing.record_reshuffle(elapsed + 1.0)
