@@ -11,6 +11,9 @@ ADB-based automation tools for the mobile game *Life Makeover*.
 | [vanna_quiz/](vanna_quiz/) | Vvanna Quiz — 8-question quiz mini-game | [CHANGELOG](vanna_quiz/CHANGELOG.md) · [MODULES](vanna_quiz/MODULES.md) |
 | [fun_time_wonder_connect/](fun_time_wonder_connect/) | Wonder Connect — link matching card pairs mini-game | [CHANGELOG](fun_time_wonder_connect/CHANGELOG.md) · [MODULES](fun_time_wonder_connect/MODULES.md) |
 
+### Wonder Connect Demo
+![Wonder Connect Demo](https://raw.githubusercontent.com/chancsy/life_makeover_tools/assets/demo_wonder_connect.mp4)
+
 ## Shared Infrastructure
 
 ```
