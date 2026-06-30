@@ -12,7 +12,7 @@ ADB-based automation tools for the mobile game *Life Makeover*.
 | [fun_time_wonder_connect/](fun_time_wonder_connect/) | Wonder Connect — link matching card pairs mini-game | [CHANGELOG](fun_time_wonder_connect/CHANGELOG.md) · [MODULES](fun_time_wonder_connect/MODULES.md) |
 
 ### Wonder Connect Demo
-![Wonder Connect Demo](https://raw.githubusercontent.com/chancsy/life_makeover_tools/assets/demo_wonder_connect.mp4)
+https://github.com/user-attachments/assets/2d5cc2c2-5b33-45ac-baad-e8f5210c2db0
 
 ## Shared Infrastructure
 
