@@ -1201,7 +1201,8 @@ def main():
                 if screenshot is not None:
                     n = grid_parser.scan_empty_cells(screenshot)
                     print(f'  Found {n} pre-cleared cell(s).')
-            assistant.run(no_pacing=args.no_pacing, pacing_target=pacing_target)
+            # debug: parse the live board, save screenshot_debug_connect.png, stop before any tap
+            assistant.run(debug=debug, no_pacing=args.no_pacing, pacing_target=pacing_target)
 
         elif action == 'parse_debug':
             assistant = GameAssistant(adb, grid_parser, link_checker,

@@ -7,6 +7,7 @@
 - `PacingController.DEFAULT_TARGET`, `PROCESSING_PER_PAIR`, `SPEED_RANGE` constants and `expected_range(target, pairs=24)`; `[pacing]` start line prints the target
 
 ### Fixed
+- **`--debug` without `-s` tapped for real**: it opened the menu, and "Start game" ignored the flag, playing a normal game. Now the menu run honours `--debug`: it parses the live board, saves `screenshot_debug_connect.png` and stops before any tap
 - Game start crashed on OpenCV 5 (`compareHist` assert) when `config.json` had a calibrated empty-cell histogram: OpenCV 5 `calcHist` returns `(bins,)`, the loaded histogram was `(bins, 1)` (commit `a719c71`)
 - `PacingController` docstring described ±25% jitter and a 10-18 s target; now matches the code (±3% jitter, per-game speed factor)
 
