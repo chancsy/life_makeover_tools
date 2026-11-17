@@ -17,10 +17,10 @@
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from common.lm_adb import get_adb, get_scrcpy, open_capture, device_id
+from common.lm_adb import get_scrcpy, open_capture
+from common.lm_tool import read_config, write_config, select_device, profile_regions
 
 import argparse
-import json
 import random
 import time
 
@@ -61,36 +61,13 @@ RESHUFFLE_DIFF_THRESHOLD = 8.0   # min grid mean-pixel-diff to declare board cha
 # Config helpers
 # ---------------------------------------------------------------------------
 
-def _read_config(path):
-    if os.path.exists(path):
-        with open(path) as f:
-            return json.load(f)
-    return {}
-
-
-def load_device_config(config_path, serial):
-    devices = _read_config(config_path).get('devices', {})
-    entry = devices.get(serial)
-    using_default = False
-    if entry is None and serial != 'default':
-        entry = devices.get('default')
-        using_default = entry is not None
-    if entry is None:
-        return None, None, None
-    regions = {k: tuple(v) for k, v in entry['regions'].items()}
-    name = entry.get('name', serial)
-    size = entry.get('screen_size', ['?', '?'])
-    if using_default:
-        print(f'  [WARN] Device "{serial}" not in config — using "default" profile '
-              f'({name}, {size[0]}×{size[1]}). Regions may not match your screen exactly.')
-        print('         Run setup.py to register your device for accurate results.')
-    else:
-        print(f'Recognized device "{name}" ({serial}) -- {size[0]}x{size[1]}')
-    empty_hist = entry.get('empty_hist')
-    if empty_hist is not None:
-        empty_hist = [np.array(ch, dtype=np.float32).reshape(-1, 1) for ch in empty_hist]
-        print('  Loaded empty-cell histogram from config.')
-    return regions, entry.get('screen_size'), empty_hist
+def _empty_hist(profile):
+    """The profile's empty-cell histogram (setup.py calibration) as cv2 arrays, or None."""
+    hist = profile.get('empty_hist')
+    if hist is None:
+        return None
+    print('  Loaded empty-cell histogram from config.')
+    return [np.array(ch, dtype=np.float32).reshape(-1, 1) for ch in hist]
 
 # ---------------------------------------------------------------------------
 # Grid Parser
@@ -1101,10 +1078,9 @@ def _ask_target(current):
 
 def _save_pacing_target(target):
     """Store the target in this tool's config.json (re-read first, so other keys are kept)."""
-    cfg = _read_config(CONFIG_PATH)
+    cfg = read_config(CONFIG_PATH)
     cfg.setdefault('pacing', {})['target'] = target
-    with open(CONFIG_PATH, 'w') as f:
-        json.dump(cfg, f, indent=2)
+    write_config(CONFIG_PATH, cfg)
 
 
 def main():
@@ -1129,25 +1105,9 @@ def main():
     debug = args.debug or bool(args.screenshot)
     screenshot_path = args.screenshot
 
-    cfg = _read_config(CONFIG_PATH)
-    empty_hist = None
-
-    if debug and screenshot_path:
-        devices_cfg = cfg.get('devices', {})
-        if not devices_cfg:
-            print('No device config. Run setup.py first.')
-            sys.exit(1)
-        first_serial = next(iter(devices_cfg))
-        entry = devices_cfg[first_serial]
-        regions = {k: tuple(v) for k, v in entry['regions'].items()}
-        print(f'Debug mode -- regions from device "{first_serial}"')
-        adb = None
-    else:
-        adb = get_adb(adb_path=args.adb_path, address=args.connect)
-        regions, _, empty_hist = load_device_config(CONFIG_PATH, device_id(adb))
-        if regions is None:
-            print(f'Device "{device_id(adb)}" not in config. Run setup.py first.')
-            sys.exit(1)
+    cfg, adb, profile = select_device(args, CONFIG_PATH)   # --debug -s: adb None, first profile
+    regions = profile_regions(profile)
+    empty_hist = _empty_hist(profile) if adb is not None else None
 
     grid_region = regions['grid']
     grid_parser = GridParser(grid_region, GRID_ROWS, GRID_COLS)

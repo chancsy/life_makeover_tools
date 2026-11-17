@@ -12,11 +12,13 @@ Usage:
     capture = open_capture(cfg, adb, 'my_tool')  # scrcpy if found, else None = adb screencap
 """
 
-import json as _json
 import os as _os
 
+from utils import UtilityFunctions
 from utils.standalone.adb_utils import AdbUtils
 from utils.standalone.scrcpy_utils import ScrcpyCapture, find_scrcpy, launch_scrcpy, resolve_adb  # noqa: F401 (ScrcpyCapture re-exported)
+
+_utils = UtilityFunctions()
 
 # ---------------------------------------------------------------------------
 # Common config  (shared across all tools — scrcpy exe, bitrate, etc.)
@@ -26,15 +28,11 @@ _COMMON_CONFIG_PATH = _os.path.join(_os.path.dirname(__file__), 'config.json')
 
 
 def read_common_config() -> dict:
-    if _os.path.exists(_COMMON_CONFIG_PATH):
-        with open(_COMMON_CONFIG_PATH) as f:
-            return _json.load(f)
-    return {}
+    return _utils.read_json_file(_COMMON_CONFIG_PATH, default={})
 
 
 def _write_common_config(cfg: dict) -> None:
-    with open(_COMMON_CONFIG_PATH, 'w') as f:
-        _json.dump(cfg, f, indent=2)
+    _utils.write_json_file(_COMMON_CONFIG_PATH, cfg)
 
 
 def _configured_scrcpy_exe(cfg=None) -> str | None:

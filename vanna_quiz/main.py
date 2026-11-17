@@ -17,11 +17,11 @@
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from common.lm_adb import get_adb, open_capture, device_id
+from common.lm_adb import open_capture
+from common.lm_tool import read_config, write_config, select_device, profile_regions
 
 import argparse
 import difflib
-import json
 import random
 import time
 import requests
@@ -62,43 +62,6 @@ def _text_sim(a, b):
     return difflib.SequenceMatcher(None, (a or '').lower().strip(), (b or '').lower().strip()).ratio()
 
 # ---------------------------------------------------------------------------
-# Config helpers
-# ---------------------------------------------------------------------------
-
-def _read_config(path):
-    if os.path.exists(path):
-        with open(path) as f:
-            return json.load(f)
-    return {}
-
-
-def _write_config(path, cfg):
-    with open(path, 'w') as f:
-        json.dump(cfg, f, indent=2)
-
-
-def load_regions_for_device(config_path, device_serial):
-    devices = _read_config(config_path).get('devices', {})
-    entry = devices.get(device_serial)
-    using_default = False
-    if entry is None and device_serial != 'default':
-        entry = devices.get('default')
-        using_default = entry is not None
-    if entry is None:
-        return None
-    regions = {k: tuple(v) for k, v in entry['regions'].items()}
-    size = entry.get('screen_size', ['?', '?'])
-    name = entry.get('name', device_serial)
-    if using_default:
-        print(f'  [WARN] Device "{device_serial}" not in config — using "default" profile '
-              f'({name}, {size[0]}×{size[1]}). Regions may not match your screen exactly.')
-        print('         Run setup.py to register your device for accurate results.')
-    else:
-        print(f'Recognized device "{name}" ({device_serial}) — {size[0]}×{size[1]}')
-    return regions
-
-
-# ---------------------------------------------------------------------------
 # Answer loader — local cache first, web fetch on miss
 # ---------------------------------------------------------------------------
 
@@ -110,7 +73,7 @@ class QuizAnswerLoader:
         self._web_fetched = False
 
     def _load_local(self):
-        answers = _read_config(self._config_path).get('answers', {})
+        answers = read_config(self._config_path).get('answers', {})
         if answers:
             print(f'Loaded {len(answers)} answers from local cache')
         return answers
@@ -176,9 +139,9 @@ class QuizAnswerLoader:
         print(f'Fetched {len(fetched)} entries from wiki ({new_count} new)')
 
     def _save_answers(self):
-        cfg = _read_config(self._config_path)
+        cfg = read_config(self._config_path)
         cfg['answers'] = self._answers
-        _write_config(self._config_path, cfg)
+        write_config(self._config_path, cfg)
 
     def _fuzzy_find(self, query):
         q = query.lower().strip()
@@ -477,29 +440,16 @@ def main():
 
     debug = args.debug or bool(args.screenshot)
     screenshot_path = args.screenshot
-    cfg = _read_config(CONFIG_PATH)
+    cfg, adb, profile = select_device(args, CONFIG_PATH)
+    regions = profile_regions(profile)
 
     if debug and screenshot_path:
-        # File-based debug: no device needed, use first available region config
-        devices_cfg = cfg.get('devices', {})
-        if not devices_cfg:
-            print('No device config found. Run setup.py first.')
-            sys.exit(1)
-        first_serial = next(iter(devices_cfg))
-        regions = {k: tuple(v) for k, v in devices_cfg[first_serial]['regions'].items()}
-        print(f'Debug mode — regions from device "{first_serial}"')
-
+        # File-based debug: no device needed
         loader = QuizAnswerLoader(ANSWER_URL, CONFIG_PATH)
         reader = QuizScreenReader(regions)
         assistant = QuizAssistant(adb=None, loader=loader, reader=reader)
         assistant.run(debug=True, screenshot_path=screenshot_path)
         return
-
-    adb = get_adb(adb_path=args.adb_path, address=args.connect)
-    regions = load_regions_for_device(CONFIG_PATH, device_id(adb))
-    if regions is None:
-        print(f'Device "{device_id(adb)}" not in config. Run setup.py to register this device.')
-        sys.exit(1)
 
     capture = open_capture(cfg, adb, SCRCPY_WINDOW_TITLE, force_adb=args.adb)
 
