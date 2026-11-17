@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.6.3] — 2026-11-18
+
+### Fixed
+- **A question could be read off the previous question's screen** — after the tap, any change in the OCR'd question text counted as "new", but OCR of one question varies by a letter between frames ("ihere" / "there"), so Q4 was read and answered from Q3's still-visible screen. Now:
+  - wait 1.0 s after the tap (was 0.5 s): the question changes some time after the answer is chosen;
+  - a read below 0.8 similarity to the previous question is new;
+  - a read at 0.8 or above may be the old question or a similar new one (some bank questions score up to 0.94 against each other), so wait another 1.0 s and take the next frame as the new question;
+  - when no answer is found, one fresh frame is read before falling back to manual (a frame caught mid-animation).
+
+---
+
 ## [0.6.2] — 2026-11-17
 
 ### Fixed

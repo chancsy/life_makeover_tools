@@ -43,11 +43,23 @@ CONFIG_PATH = os.path.join(os.path.dirname(__file__), 'config.json')
 SCRCPY_WINDOW_TITLE = 'vanna_quiz'
 
 QUESTIONS_PER_QUIZ = 8
-TRANSITION_MIN_WAIT = 0.5   # seconds to wait after tap before polling (animation settling)
+TRANSITION_MIN_WAIT = 1.0   # seconds to wait after tap before polling (the question changes some
+                            # time after the answer is chosen)
 TRANSITION_POLL     = 0.3   # polling interval while waiting for new question
 TRANSITION_TIMEOUT  = 10.0  # give up and proceed after this long
+NEW_QUESTION_MAX_SIM = 0.8  # below this similarity to the previous question text = a new question.
+                            # OCR noise on one question scores ~0.97-0.98 ("ihere" vs "there"), but
+                            # some different bank questions score up to 0.94, so a similar read is
+                            # not trusted either way: wait TRANSITION_CONFIRM_WAIT and take that frame
+TRANSITION_CONFIRM_WAIT = 1.0  # after a read still >= NEW_QUESTION_MAX_SIM: wait this long, then
+                               # accept the next frame as the new question
 
 FUZZY_CUTOFF = 0.4
+
+
+def _text_sim(a, b):
+    """Similarity 0..1 of two OCR'd texts (case-insensitive), as difflib's matcher scores them."""
+    return difflib.SequenceMatcher(None, (a or '').lower().strip(), (b or '').lower().strip()).ratio()
 
 # ---------------------------------------------------------------------------
 # Config helpers
@@ -270,7 +282,13 @@ class QuizAssistant:
         return None
 
     def _wait_for_new_question(self, prev_question):
-        """After tapping, poll until the question text changes. Returns the new screenshot."""
+        """After tapping, wait for the next question to be shown. Returns its screenshot.
+
+        Waits TRANSITION_MIN_WAIT, then polls until a question is read. Text below
+        NEW_QUESTION_MAX_SIM similarity to the previous question is new. Text at or above it may
+        be the previous question still on screen (OCR varies by a letter between frames, so an
+        exact comparison took it for new and Q4 was read off Q3's screen) or a similar new one:
+        wait TRANSITION_CONFIRM_WAIT and take the next frame as the new question."""
         time.sleep(TRANSITION_MIN_WAIT)
         t0 = time.perf_counter()
         while True:
@@ -278,13 +296,34 @@ class QuizAssistant:
             if shot is not None:
                 q = self.reader.read_question(shot)
                 elapsed = time.perf_counter() - t0 + TRANSITION_MIN_WAIT
-                if q and q != prev_question:
-                    print(f'  [transition] new question in {elapsed:.1f}s')
-                    return shot
+                if q:
+                    sim = _text_sim(q, prev_question)
+                    if sim < NEW_QUESTION_MAX_SIM:
+                        print(f'  [transition] new question in {elapsed:.1f}s '
+                              f'(similarity to previous {sim:.2f})')
+                        return shot
+                    print(f'  [transition] similar to previous ({sim:.2f}) at {elapsed:.1f}s — '
+                          f'waiting {TRANSITION_CONFIRM_WAIT:.1f}s, then taking the next frame')
+                    time.sleep(TRANSITION_CONFIRM_WAIT)
+                    confirm = self._take_screenshot()
+                    return confirm if confirm is not None else shot
                 if time.perf_counter() - t0 >= TRANSITION_TIMEOUT:
                     print(f'  [transition] timeout after {elapsed:.1f}s — proceeding anyway')
                     return shot
             time.sleep(TRANSITION_POLL)
+
+    def _read_and_answer(self, screenshot):
+        """OCR the screen and look up the answer: (ocr_texts, label, matched_q, correct_answer)."""
+        t0 = time.perf_counter()
+        ocr_texts = self.reader.read_screen(screenshot)
+        print(f'  [time] OCR total:     {(time.perf_counter()-t0)*1000:5.0f} ms')
+        print(f'  OCR Q:  "{ocr_texts["question"][:60]}"')
+        for lbl in ('A', 'B', 'C', 'D'):
+            print(f'  OCR {lbl}: "{ocr_texts[lbl]}"')
+        t0 = time.perf_counter()
+        label, matched_q, correct_answer = self._find_correct_choice(ocr_texts)
+        print(f'  [time] lookup:        {(time.perf_counter()-t0)*1000:5.0f} ms')
+        return ocr_texts, label, matched_q, correct_answer
 
     def _find_correct_choice(self, ocr_texts):
         """Returns (label, matched_q, correct_answer) — any can be None on failure."""
@@ -377,17 +416,17 @@ class QuizAssistant:
                     continue
             # else: screenshot already set by _wait_for_new_question from previous iteration
 
-            t0 = time.perf_counter()
-            ocr_texts = self.reader.read_screen(screenshot)
-            print(f'  [time] OCR total:     {(time.perf_counter()-t0)*1000:5.0f} ms')
-            print(f'  OCR Q:  "{ocr_texts["question"][:60]}"')
-            for lbl in ('A', 'B', 'C', 'D'):
-                print(f'  OCR {lbl}: "{ocr_texts[lbl]}"')
+            ocr_texts, label, matched_q, correct_answer = self._read_and_answer(screenshot)
+            if label is None and not (debug and screenshot_path):
+                # Maybe a frame caught mid-animation (half-drawn text): read one fresh frame
+                # before giving up. Costs a poll only when the lookup failed.
+                time.sleep(TRANSITION_POLL)
+                retry = self._take_screenshot()
+                if retry is not None:
+                    print('  [retry] no answer - reading a fresh frame')
+                    screenshot = retry
+                    ocr_texts, label, matched_q, correct_answer = self._read_and_answer(screenshot)
             prev_question = ocr_texts['question']
-
-            t0 = time.perf_counter()
-            label, matched_q, correct_answer = self._find_correct_choice(ocr_texts)
-            print(f'  [time] lookup:        {(time.perf_counter()-t0)*1000:5.0f} ms')
 
             if debug:
                 self._save_debug_image(screenshot, ocr_texts, label, matched_q, correct_answer,
