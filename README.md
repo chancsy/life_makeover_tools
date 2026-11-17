@@ -53,17 +53,21 @@ apply over Wi-Fi. Over Wi-Fi, a lower scrcpy bitrate (e.g. `8M`, via `setup.py -
 adb_wireless.py     — Wi-Fi setup (above)
 common/
 ├── config.json     — shared settings: "scrcpy" (exe, video_bitrate), "adb" (wireless address)
-└── lm_adb.py       — shared helpers (built on lib-utils AdbUtils + scrcpy_utils):
-                        get_adb(adb_path, address)  connect: --adb-path > adb bundled with scrcpy > PATH;
-                                                    attached device (USB first), else Wi-Fi reconnect
-                        device_id(adb)              profile key: hardware serial (same over USB and Wi-Fi)
-                        open_capture(cfg, adb, window_title, force_adb)  frame source: scrcpy when found,
-                                                    else None = adb screencap (prints why)
-                        get_scrcpy(cfg, serial, adb, window_title)  attach to / launch scrcpy, grab frames
-                        scrcpy_found(cfg)           scrcpy path (config exe, else PATH) or None
-                        setup_scrcpy()              interactive prompt -> common/config.json
-                        read_common_config()        read common/config.json
-                        new_adb(), save_wireless_address()
+├── lm_adb.py       — device + capture (built on lib-utils AdbUtils + scrcpy_utils):
+│                       get_adb(adb_path, address)  connect: --adb-path > adb bundled with scrcpy > PATH;
+│                                                   attached device (USB first), else Wi-Fi reconnect
+│                       device_id(adb)              profile key: hardware serial (same over USB and Wi-Fi)
+│                       open_capture(cfg, adb, window_title, force_adb)  frame source: scrcpy when found,
+│                                                   else None = adb screencap (prints why)
+│                       get_scrcpy(), scrcpy_found(), setup_scrcpy(), read_common_config(),
+│                       new_adb(), save_wireless_address()
+└── lm_tool.py      — tool scaffolding: each tool's config.json and device profiles:
+                        add_common_args(parser)     --debug, -s, --adb, --connect, --adb-path
+                        select_device(args, path)   main.py: (cfg, adb, profile); -s = no device, first profile
+                        register_device(path, region_names, screen_name, redo)  setup.py: scrcpy prompt,
+                                                    device name, mark regions (RegionSetupTool), save
+                        read_config(), write_config()  JSON via lib-utils read_json_file / write_json_file
+                        load_profile(), first_profile(), profile_regions()
 ```
 
 The tools capture with scrcpy whenever it's found (the config's `exe`, else PATH) unless `--adb` is
@@ -77,14 +81,17 @@ The tools use the adb bundled with scrcpy, so both share one adb client.
    ```python
    import sys, os
    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-   from common.lm_adb import get_adb, open_capture, setup_scrcpy, read_common_config, device_id
    ```
-3. In `setup.py`, call `setup_scrcpy()` once (skip it if `read_common_config()` already has `scrcpy`),
-   then `RegionSetupTool` (lib-utils `utils.tools.region_setup`) to mark the regions; save them in
-   `<tool>/config.json` under `device_id(adb)`
-4. In `main.py`, `get_adb(adb_path=args.adb_path, address=args.connect)` and
-   `open_capture(cfg, adb, '<tool_name>', force_adb=args.adb)`; store regions as screen
-   fractions and scale taps by `adb.get_screen_size()` (the scrcpy frame is smaller than the device)
+3. `setup.py`: `register_device(CONFIG_PATH, ['region1', ...], 'the game screen', redo='--redo' in sys.argv)`
+   (`common.lm_tool`) — add tool-specific profile keys to the returned profile, then `write_config()`
+4. `main.py`:
+   ```python
+   args = add_common_args(argparse.ArgumentParser()).parse_args()
+   cfg, adb, profile = select_device(args, CONFIG_PATH)
+   regions = profile_regions(profile)                     # screen fractions
+   capture = open_capture(cfg, adb, '<tool_name>', force_adb=args.adb)
+   adb.tap_in_fraction_region(regions['button'])          # lib-utils; scaled to device pixels, not frame pixels
+   ```
 5. Add a row to the Tools table above
 
 ## Platform Support

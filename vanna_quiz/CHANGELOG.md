@@ -11,6 +11,7 @@
 
 ### Changed
 - **scrcpy capture whenever scrcpy is found** (config `exe`, else PATH), unless `--adb` — it used to need a `"scrcpy"` section in `common/config.json`, and without one every frame silently came from adb screencap (~2.8 s each over Wi-Fi instead of ~0.1 s). Prints `Screenshot: adb screencap (...)` when it falls back. Shared with Wonder Connect via `common/lm_adb.py` `open_capture()`.
+- **Shared code moved to `common/`** (no behaviour change): config files and device profiles, the common command-line options, `setup.py` device registration now come from `common/lm_tool.py` / `common/lm_adb.py`, shared with Wonder Connect; region taps use lib-utils `AdbUtils.tap_in_fraction_region()`. `config.json` is read and written with lib-utils `read_json_file` / `write_json_file` (UTF-8, final newline). `ADB_PATH` constant removed (use `--adb-path`).
 
 ### Added
 - **Start prompt** — `main.py` waits for Enter before reading the first question, since the quiz can be played only once (`--debug -s` skips it).

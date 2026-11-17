@@ -4,6 +4,8 @@
 
 ### Changed
 - **scrcpy capture whenever scrcpy is found** (config `exe`, else PATH), unless `--adb` — `main.py` and the `setup.py` calibration used to need a `"scrcpy"` section in `common/config.json`, and silently used adb screencap without one. Shared with Vvanna Quiz via `common/lm_adb.py` `open_capture()`.
+- **Shared code moved to `common/`** (no behaviour change): config files and device profiles, the common command-line options, `setup.py` device registration now come from `common/lm_tool.py` / `common/lm_adb.py`, shared with Vvanna Quiz; region taps use lib-utils `AdbUtils.tap_in_fraction_region()`. `config.json` is read and written with lib-utils `read_json_file` / `write_json_file` (UTF-8, final newline). `ADB_PATH` constant removed (use `--adb-path`).
+- `setup.py` calibration uses `GridParser`'s cell crop and histogram from `main.py` instead of its own copies (same values); `GridParser._color_hist` reuses `_empty_hist_compute`.
 
 ---
 
