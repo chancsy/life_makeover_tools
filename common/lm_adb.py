@@ -86,44 +86,6 @@ def save_wireless_address(address: str | None) -> None:
     _write_common_config(cfg)
 
 
-def _reconnect_wireless(adb) -> str | None:
-    """Reconnect over Wi-Fi: the saved address, else a paired Wireless debugging device found
-    over mDNS (its port changes each time Wireless debugging is toggled). Saves what works."""
-    saved = read_common_config().get('adb', {}).get('wireless')
-    if saved:
-        print(f'No device attached - reconnecting over Wi-Fi to {saved}...')
-        serial = adb.connect(saved)
-        if serial:
-            return serial
-    for name, service, address in adb.mdns_services():
-        if not service.startswith('_adb-tls-connect'):
-            continue
-        print(f'Trying Wireless debugging device {name} at {address}...')
-        serial = adb.connect(address)
-        if serial:
-            save_wireless_address(serial)
-            return serial
-    return None
-
-
-def _pick_device(adb, devices) -> str:
-    """USB before Wi-Fi (lower latency), else the first. A paired Wireless debugging device is
-    listed twice once adb auto-connects it ('host:port' and 'adb-<id>._adb-tls-connect._tcp'),
-    so warn only when the serials belong to different devices (by hardware serial)."""
-    if len(devices) == 1:
-        return devices[0]
-    ids = {}
-    for s in devices:
-        adb.set_device(s)
-        ids[s] = adb.get_hardware_serial()
-    pick = sorted(devices, key=adb.is_wireless)[0]   # stable: USB first, then adb's order
-    adb._lm_device_id = ids[pick]                     # device_id() cache
-    if len(set(ids.values())) > 1:
-        print(f'Several devices attached: {devices} - using {pick} '
-              '(unplug the others, or use --connect HOST:PORT).')
-    return pick
-
-
 def get_adb(adb_path=None, address=None):
     """
     Return an AdbUtils instance connected to a device.
@@ -143,8 +105,13 @@ def get_adb(adb_path=None, address=None):
                                'Run adb_wireless.py (pair / usb) to set it up.')
         save_wireless_address(serial)
     else:
-        devices = adb.get_devices()
-        serial = _pick_device(adb, devices) if devices else _reconnect_wireless(adb)
+        # lib-utils AdbUtils: USB first, one tablet listed twice counts once
+        serial = adb.pick_device()
+        if not serial:
+            saved = read_common_config().get('adb', {}).get('wireless')
+            serial = adb.reconnect_wireless(saved)       # saved address, then mDNS
+            if serial and serial != saved:
+                save_wireless_address(serial)            # new port found over mDNS
         if not serial:
             raise RuntimeError('No ADB devices found. Connect the device by USB with USB debugging on, '
                                'or set up Wi-Fi with adb_wireless.py.')
@@ -158,11 +125,9 @@ def device_id(adb) -> str:
     Key for per-device profiles in each tool's config.json: the device's hardware
     serial (ro.serialno), which stays the same over USB and Wi-Fi — the adb serial
     becomes 'host:port' over Wi-Fi. Over USB the two are normally equal, so
-    profiles saved under the USB serial still match. Cached on the adb object.
+    profiles saved under the USB serial still match. (AdbUtils caches it.)
     """
-    if getattr(adb, '_lm_device_id', None) is None:
-        adb._lm_device_id = adb.get_hardware_serial()
-    return adb._lm_device_id
+    return adb.get_hardware_serial()
 
 
 # ---------------------------------------------------------------------------
