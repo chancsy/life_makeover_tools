@@ -40,6 +40,7 @@ These are sourced from `scripts_collection/lib-utils` (installed locally as `uti
 | Module | Path | Used for |
 |---|---|---|
 | `AdbUtils` | `utils/standalone/adb_utils.py` | ADB device communication, screenshot, touch events |
+| `launch_scrcpy`, `resolve_adb` | `utils/standalone/scrcpy_utils.py` | Find / launch scrcpy, pick the adb bundled with it, grab frames from its window |
 | `RegionSetupTool` | `utils/standalone/region_setup.py` | Interactive GUI for defining screen regions; reusable across all games |
 | `UtilityFunctions` | `utils/utilities.py` | Module existence checks, demo runner |
 

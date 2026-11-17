@@ -21,6 +21,7 @@ pip install opencv-python numpy imagehash Pillow mss pywin32 pygetwindow
 | Module | Path | Used for |
 |---|---|---|
 | `AdbUtils` | `utils/standalone/adb_utils.py` | Screenshot, touch events |
+| `launch_scrcpy`, `resolve_adb` | `utils/standalone/scrcpy_utils.py` | Find / launch scrcpy, pick the adb bundled with it, grab frames from its window |
 | `WindowManager` | `utils/standalone/win_automation_utils.py` | scrcpy window capture (client area, DPI-safe) |
 | `RegionSetupTool` | `utils/standalone/region_setup.py` | Grid + reshuffle button region setup |
 
