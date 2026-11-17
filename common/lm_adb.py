@@ -9,7 +9,7 @@ Usage:
     from common.lm_adb import get_adb, get_scrcpy
     adb     = get_adb()                          # --adb-path > adb bundled with scrcpy > adb on PATH
     adb     = get_adb(address='192.168.1.5:5555')  # Wi-Fi (see adb_wireless.py)
-    capture = get_scrcpy(cfg, adb.device, adb)   # optional fast frame capture
+    capture = open_capture(cfg, adb, 'my_tool')  # scrcpy if found, else None = adb screencap
 """
 
 import json as _json
@@ -41,6 +41,25 @@ def _configured_scrcpy_exe(cfg=None) -> str | None:
     """scrcpy exe from common config, overridden per-key by a plugin cfg; None/'' = find on PATH."""
     scrcpy_cfg = {**read_common_config().get('scrcpy', {}), **(cfg or {}).get('scrcpy', {})}
     return scrcpy_cfg.get('exe') or None
+
+
+def scrcpy_found(cfg=None) -> str | None:
+    """Path of the scrcpy the tools would use (configured exe, else PATH), or None.
+
+    The tools capture with scrcpy whenever this finds it (unless --adb); the "scrcpy"
+    config section is optional settings, not an on/off switch."""
+    return find_scrcpy(_configured_scrcpy_exe(cfg))
+
+
+def open_capture(cfg, adb, window_title, force_adb=False):
+    """The tools' frame source: a ScrcpyCapture when scrcpy is found (attaching to or launching
+    the window), else None = take frames with adb screencap. Prints why adb is used.
+
+    force_adb: the --adb option."""
+    if not force_adb and scrcpy_found(cfg):
+        return get_scrcpy(cfg, serial=adb.device, adb=adb, window_title=window_title)
+    print('Screenshot: adb screencap' + (' (--adb flag)' if force_adb else ' (scrcpy not found)'))
+    return None
 
 
 def setup_scrcpy() -> dict:

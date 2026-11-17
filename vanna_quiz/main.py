@@ -17,7 +17,7 @@
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from common.lm_adb import get_adb, get_scrcpy, read_common_config, device_id
+from common.lm_adb import get_adb, open_capture, device_id
 
 import argparse
 import difflib
@@ -501,10 +501,7 @@ def main():
         print(f'Device "{device_id(adb)}" not in config. Run setup.py to register this device.')
         sys.exit(1)
 
-    capture = None
-    _scrcpy_cfg = {**read_common_config().get('scrcpy', {}), **cfg.get('scrcpy', {})}
-    if not args.adb and _scrcpy_cfg:
-        capture = get_scrcpy(cfg, serial=adb.device, adb=adb, window_title=SCRCPY_WINDOW_TITLE)
+    capture = open_capture(cfg, adb, SCRCPY_WINDOW_TITLE, force_adb=args.adb)
 
     loader = QuizAnswerLoader(ANSWER_URL, CONFIG_PATH)
     reader = QuizScreenReader(regions)

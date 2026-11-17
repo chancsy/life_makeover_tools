@@ -57,14 +57,18 @@ common/
                         get_adb(adb_path, address)  connect: --adb-path > adb bundled with scrcpy > PATH;
                                                     attached device (USB first), else Wi-Fi reconnect
                         device_id(adb)              profile key: hardware serial (same over USB and Wi-Fi)
+                        open_capture(cfg, adb, window_title, force_adb)  frame source: scrcpy when found,
+                                                    else None = adb screencap (prints why)
                         get_scrcpy(cfg, serial, adb, window_title)  attach to / launch scrcpy, grab frames
+                        scrcpy_found(cfg)           scrcpy path (config exe, else PATH) or None
                         setup_scrcpy()              interactive prompt -> common/config.json
                         read_common_config()        read common/config.json
                         new_adb(), save_wireless_address()
 ```
 
-The scrcpy executable is optional in the config: blank means "find it on PATH". The tools use the
-adb bundled with scrcpy, so both share one adb client.
+The tools capture with scrcpy whenever it's found (the config's `exe`, else PATH) unless `--adb` is
+given; the `"scrcpy"` config section only holds settings, and blank `exe` means "find it on PATH".
+The tools use the adb bundled with scrcpy, so both share one adb client.
 
 ## Adding a New Tool
 
@@ -73,12 +77,13 @@ adb bundled with scrcpy, so both share one adb client.
    ```python
    import sys, os
    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-   from common.lm_adb import get_adb, get_scrcpy, setup_scrcpy, read_common_config, device_id
+   from common.lm_adb import get_adb, open_capture, setup_scrcpy, read_common_config, device_id
    ```
 3. In `setup.py`, call `setup_scrcpy()` once (skip it if `read_common_config()` already has `scrcpy`),
    then `RegionSetupTool` (lib-utils `utils.tools.region_setup`) to mark the regions; save them in
    `<tool>/config.json` under `device_id(adb)`
-4. In `main.py`, `get_adb(adb_path=args.adb_path, address=args.connect)`; store regions as screen
+4. In `main.py`, `get_adb(adb_path=args.adb_path, address=args.connect)` and
+   `open_capture(cfg, adb, '<tool_name>', force_adb=args.adb)`; store regions as screen
    fractions and scale taps by `adb.get_screen_size()` (the scrcpy frame is smaller than the device)
 5. Add a row to the Tools table above
 
@@ -97,9 +102,9 @@ the rest is cross-platform in principle but untested elsewhere:
 
 ### Adding macOS / Linux support (notes, untested)
 
-- **Today, elsewhere:** run every tool with `--adb`. `setup.py` always writes a `scrcpy` entry to
-  `common/config.json`, and the tools then try scrcpy capture, which fails off Windows. First fix:
-  default to adb screenshots when not on Windows (`main.py` `use_scrcpy`, `setup.py` `_make_capture`).
+- **Today, elsewhere:** run every tool with `--adb`. The tools use scrcpy capture whenever scrcpy is
+  found, which fails off Windows. First fix: make `common/lm_adb.py` `open_capture()` return None
+  (adb screenshots) when not on Windows — both tools and Wonder Connect's `setup.py` go through it.
 - **Window capture per OS** — `capture_window(title)` needs the window's client-area rectangle; `mss`
   already grabs pixels on all three systems:
   - macOS: Quartz `CGWindowListCopyWindowInfo` for the window bounds (needs the Screen Recording permission);

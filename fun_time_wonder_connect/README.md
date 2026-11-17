@@ -34,7 +34,7 @@ when you start it on a partly played board ("Found N pre-cleared cell(s)"), or c
 clear. Without it, such cells are read as cards, which corrupts the pairing and can waste taps.
 
 Calibrate with the same capture you play with (scrcpy or adb): scrcpy's video compression shifts
-colours slightly. `setup.py` uses scrcpy automatically when it's configured.
+colours slightly. `setup.py` uses scrcpy automatically when it's found (config or PATH), like `main.py`.
 
 Regions and calibration are saved in `config.json` under the device's hardware serial, as
 fractions of the screen, so they work at any capture size and over USB or Wi-Fi. A device that

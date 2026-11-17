@@ -9,6 +9,9 @@
   - a read at 0.8 or above may be the old question or a similar new one (some bank questions score up to 0.94 against each other), so wait another 1.0 s and take the next frame as the new question;
   - when no answer is found, one fresh frame is read before falling back to manual (a frame caught mid-animation).
 
+### Changed
+- **scrcpy capture whenever scrcpy is found** (config `exe`, else PATH), unless `--adb` — it used to need a `"scrcpy"` section in `common/config.json`, and without one every frame silently came from adb screencap (~2.8 s each over Wi-Fi instead of ~0.1 s). Prints `Screenshot: adb screencap (...)` when it falls back. Shared with Wonder Connect via `common/lm_adb.py` `open_capture()`.
+
 ### Added
 - **Start prompt** — `main.py` waits for Enter before reading the first question, since the quiz can be played only once (`--debug -s` skips it).
 

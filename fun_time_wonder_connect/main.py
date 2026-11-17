@@ -17,7 +17,7 @@
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from common.lm_adb import get_adb, get_scrcpy, read_common_config, device_id
+from common.lm_adb import get_adb, get_scrcpy, open_capture, device_id
 
 import argparse
 import json
@@ -1118,7 +1118,7 @@ def main():
     parser.add_argument('--adb-path', metavar='PATH', default=ADB_PATH)
     parser.add_argument('--adb', action='store_true',
                         help='Force adb screencap for screenshots (low-speed fallback). '
-                             'Default: scrcpy window capture when configured in config.json.')
+                             'Default: scrcpy window capture when scrcpy is found (config exe or PATH).')
     parser.add_argument('--connect', metavar='HOST[:PORT]',
                         help='Use this device over Wi-Fi (saved; see ../adb_wireless.py). '
                              'Default: attached device, else the saved Wi-Fi address')
@@ -1156,13 +1156,10 @@ def main():
     link_checker = LinkChecker(GRID_ROWS, GRID_COLS)
     device_size = adb.get_screen_size() if adb is not None else None
 
-    _scrcpy_cfg = {**read_common_config().get('scrcpy', {}), **cfg.get('scrcpy', {})}
-    use_scrcpy = not args.adb and bool(_scrcpy_cfg) and not (debug and screenshot_path)
     capture = None
-    if use_scrcpy:
-        capture = get_scrcpy(cfg, serial=adb.device, adb=adb, window_title=SCRCPY_WINDOW_TITLE)
-    else:
-        print('Screenshot: adb screencap' + (' (--adb flag)' if args.adb else ' (no scrcpy config)'))
+    if not (debug and screenshot_path):
+        capture = open_capture(cfg, adb, SCRCPY_WINDOW_TITLE, force_adb=args.adb)
+    use_scrcpy = capture is not None
 
     # Debug/parse-debug bypass the menu — run once and exit
     if args.parse_debug or (debug and screenshot_path):

@@ -11,7 +11,7 @@ Usage:
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from common.lm_adb import get_adb, get_scrcpy, setup_scrcpy, read_common_config, device_id
+from common.lm_adb import get_adb, open_capture, setup_scrcpy, read_common_config, device_id
 
 SCRCPY_WINDOW_TITLE = 'fun_time_wonder_connect'  # must match main.py
 
@@ -134,13 +134,13 @@ def _sample_empty_hist(capture, grid_region):
 def _make_capture(cfg, adb):
     """
     Return the appropriate capture object for histogram calibration.
-    Uses ScrcpyCapture if scrcpy is configured (matches runtime source),
+    Uses ScrcpyCapture if scrcpy is found (matches runtime source),
     otherwise falls back to adb so histogram pixels are consistent.
     """
-    if read_common_config().get('scrcpy'):
+    capture = open_capture(cfg, adb, SCRCPY_WINDOW_TITLE)
+    if capture is not None:
         print('  Using scrcpy for calibration (matches runtime capture source).')
-        return get_scrcpy(cfg, serial=adb.device, adb=adb,
-                          window_title=SCRCPY_WINDOW_TITLE)
+        return capture
     return adb
 
 

@@ -1,5 +1,12 @@
 # Changelog — Fun Time Wonder Connect
 
+## [0.6.1] — 2026-11-18
+
+### Changed
+- **scrcpy capture whenever scrcpy is found** (config `exe`, else PATH), unless `--adb` — `main.py` and the `setup.py` calibration used to need a `"scrcpy"` section in `common/config.json`, and silently used adb screencap without one. Shared with Vvanna Quiz via `common/lm_adb.py` `open_capture()`.
+
+---
+
 ## [0.6.0] — 2026-11-17
 
 ### Added
