@@ -8,6 +8,7 @@ utils/standalone/scrcpy_utils.py; this module adds the shared common/config.json
 Usage:
     from common.lm_adb import get_adb, get_scrcpy
     adb     = get_adb()                          # --adb-path > adb bundled with scrcpy > adb on PATH
+    adb     = get_adb(address='192.168.1.5:5555')  # Wi-Fi (see adb_wireless.py)
     capture = get_scrcpy(cfg, adb.device, adb)   # optional fast frame capture
 """
 
@@ -69,20 +70,86 @@ def setup_scrcpy() -> dict:
     return cfg['scrcpy']
 
 
-def get_adb(adb_path=None):
+def new_adb(adb_path=None) -> AdbUtils:
+    """AdbUtils with no device selected: adb_path if given > adb bundled with scrcpy > adb on PATH."""
+    return AdbUtils(adb_path=resolve_adb(adb_path, _configured_scrcpy_exe()))
+
+
+def save_wireless_address(address: str | None) -> None:
+    """Remember the Wi-Fi 'host:port' in common/config.json so get_adb() reconnects to it (None = forget)."""
+    cfg = read_common_config()
+    adb_cfg = cfg.setdefault('adb', {})
+    if address:
+        adb_cfg['wireless'] = address
+    else:
+        adb_cfg.pop('wireless', None)
+    _write_common_config(cfg)
+
+
+def _reconnect_wireless(adb) -> str | None:
+    """Reconnect over Wi-Fi: the saved address, else a paired Wireless debugging device found
+    over mDNS (its port changes each time Wireless debugging is toggled). Saves what works."""
+    saved = read_common_config().get('adb', {}).get('wireless')
+    if saved:
+        print(f'No device attached - reconnecting over Wi-Fi to {saved}...')
+        serial = adb.connect(saved)
+        if serial:
+            return serial
+    for name, service, address in adb.mdns_services():
+        if not service.startswith('_adb-tls-connect'):
+            continue
+        print(f'Trying Wireless debugging device {name} at {address}...')
+        serial = adb.connect(address)
+        if serial:
+            save_wireless_address(serial)
+            return serial
+    return None
+
+
+def _pick_device(adb, devices) -> str:
+    """USB before Wi-Fi (lower latency), else the first. A paired Wireless debugging device is
+    listed twice once adb auto-connects it ('host:port' and 'adb-<id>._adb-tls-connect._tcp'),
+    so warn only when the serials belong to different devices (by hardware serial)."""
+    if len(devices) == 1:
+        return devices[0]
+    ids = {}
+    for s in devices:
+        adb.set_device(s)
+        ids[s] = adb.get_hardware_serial()
+    pick = sorted(devices, key=adb.is_wireless)[0]   # stable: USB first, then adb's order
+    adb._lm_device_id = ids[pick]                     # device_id() cache
+    if len(set(ids.values())) > 1:
+        print(f'Several devices attached: {devices} - using {pick} '
+              '(unplug the others, or use --connect HOST:PORT).')
+    return pick
+
+
+def get_adb(adb_path=None, address=None):
     """
-    Return an AdbUtils instance connected to the first available device.
+    Return an AdbUtils instance connected to a device.
 
     adb_path: explicit adb (e.g. --adb-path) always wins; otherwise the adb bundled
               with scrcpy, so the tool and scrcpy share one adb client; else adb on PATH.
+    address:  Wi-Fi 'host[:port]' (e.g. --connect) to connect to and use; saved for next time.
+    Without address: the first attached device (USB or already-connected Wi-Fi); if none,
+    reconnects over Wi-Fi (saved address, then mDNS). See adb_wireless.py to set Wi-Fi up.
     Raises RuntimeError if no device is found.
     """
-    adb = AdbUtils(adb_path=resolve_adb(adb_path, _configured_scrcpy_exe()))
-    devices = adb.get_devices()
-    if not devices:
-        raise RuntimeError('No ADB devices found. Connect your device and enable USB debugging.')
-    adb.set_device(devices[0])
-    print(f'ADB connected: {devices[0]}  (adb: {adb.adb_path})')
+    adb = new_adb(adb_path)
+    if address:
+        serial = adb.connect(address)
+        if not serial:
+            raise RuntimeError(f'Could not connect to {address} over Wi-Fi. '
+                               'Run adb_wireless.py (pair / usb) to set it up.')
+        save_wireless_address(serial)
+    else:
+        devices = adb.get_devices()
+        serial = _pick_device(adb, devices) if devices else _reconnect_wireless(adb)
+        if not serial:
+            raise RuntimeError('No ADB devices found. Connect the device by USB with USB debugging on, '
+                               'or set up Wi-Fi with adb_wireless.py.')
+    adb.set_device(serial)
+    print(f'ADB connected: {serial}{"  (Wi-Fi)" if adb.is_wireless(serial) else ""}  (adb: {adb.adb_path})')
     return adb
 
 

@@ -418,6 +418,9 @@ def main():
                         help='Path to adb executable (default: use system PATH)')
     parser.add_argument('--adb', action='store_true',
                         help='Force adb screencap instead of scrcpy window capture')
+    parser.add_argument('--connect', metavar='HOST[:PORT]',
+                        help='Use this device over Wi-Fi (saved; see ../adb_wireless.py). '
+                             'Default: attached device, else the saved Wi-Fi address')
     parser.add_argument('--fetch-answers', action='store_true',
                         help='Fetch latest answers from wiki and update config.json, then exit')
     args = parser.parse_args()
@@ -449,7 +452,7 @@ def main():
         assistant.run(debug=True, screenshot_path=screenshot_path)
         return
 
-    adb = get_adb(adb_path=args.adb_path)
+    adb = get_adb(adb_path=args.adb_path, address=args.connect)
     regions = load_regions_for_device(CONFIG_PATH, device_id(adb))
     if regions is None:
         print(f'Device "{device_id(adb)}" not in config. Run setup.py to register this device.')

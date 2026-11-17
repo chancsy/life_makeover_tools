@@ -75,3 +75,21 @@ python main.py           # run automation (scrcpy capture if configured, else ad
 python main.py --adb     # force adb screencap
 python main.py --debug -s screenshot.png   # debug without device
 ```
+
+## Wireless ADB
+
+Any tool works over Wi-Fi. Set it up once with `adb_wireless.py` (project root):
+
+```
+python adb_wireless.py pair                 # Android 11+: Developer options > Wireless debugging > "Pair device with pairing code"
+python adb_wireless.py usb                  # any Android: device on USB now -> adb tcpip 5555 -> Wi-Fi (until reboot)
+python adb_wireless.py connect HOST[:PORT]  # connect to a known address
+python adb_wireless.py status               # attached, saved and mDNS-advertised devices
+python adb_wireless.py disconnect           # disconnect and forget the saved address
+```
+
+The working address is saved in `common/config.json` (`"adb": {"wireless": ...}`). With no device
+attached, every tool reconnects to it, or finds a paired Wireless debugging device again over mDNS
+(its port changes each time Wireless debugging is turned on). `--connect HOST[:PORT]` picks one
+explicitly. Device profiles are keyed by the hardware serial, so regions set up over USB also
+apply over Wi-Fi. Over Wi-Fi, a lower scrcpy bitrate (e.g. `8M`, via `setup.py --redo`) may help.

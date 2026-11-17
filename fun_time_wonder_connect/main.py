@@ -1067,6 +1067,9 @@ def main():
     parser.add_argument('--adb', action='store_true',
                         help='Force adb screencap for screenshots (low-speed fallback). '
                              'Default: scrcpy window capture when configured in config.json.')
+    parser.add_argument('--connect', metavar='HOST[:PORT]',
+                        help='Use this device over Wi-Fi (saved; see ../adb_wireless.py). '
+                             'Default: attached device, else the saved Wi-Fi address')
     parser.add_argument('--no-pacing', action='store_true',
                         help='Disable inter-pair delays (baseline timing run to measure raw processing speed).')
     args = parser.parse_args()
@@ -1088,7 +1091,7 @@ def main():
         print(f'Debug mode -- regions from device "{first_serial}"')
         adb = None
     else:
-        adb = get_adb(adb_path=args.adb_path)
+        adb = get_adb(adb_path=args.adb_path, address=args.connect)
         regions, _, empty_hist = load_device_config(CONFIG_PATH, device_id(adb))
         if regions is None:
             print(f'Device "{device_id(adb)}" not in config. Run setup.py first.')
