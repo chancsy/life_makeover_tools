@@ -9,6 +9,9 @@
   - a read at 0.8 or above may be the old question or a similar new one (some bank questions score up to 0.94 against each other), so wait another 1.0 s and take the next frame as the new question;
   - when no answer is found, one fresh frame is read before falling back to manual (a frame caught mid-animation).
 
+### Added
+- **Start prompt** — `main.py` waits for Enter before reading the first question, since the quiz can be played only once (`--debug -s` skips it).
+
 ---
 
 ## [0.6.2] — 2026-11-17

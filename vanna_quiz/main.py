@@ -510,6 +510,13 @@ def main():
     reader = QuizScreenReader(regions)
     assistant = QuizAssistant(adb=adb, loader=loader, reader=reader, capture=capture,
                               device_size=adb.get_screen_size())
+    # The quiz can be played once, so start only when the first question is showing
+    try:
+        input('\nOpen the Vvanna Quiz and press Enter when the first question is on screen '
+              '(Ctrl+C to exit)...')
+    except (KeyboardInterrupt, EOFError):
+        print('\nExiting.')
+        return
     assistant.run(debug=debug, screenshot_path=screenshot_path)
 
 

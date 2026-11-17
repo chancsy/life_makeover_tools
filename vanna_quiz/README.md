@@ -54,9 +54,15 @@ python main.py --fetch-answers     # refresh the answer bank from the wiki, then
   joined, so two-line answers are read whole.
 - **Tap** — inside the chosen answer's region, scaled to the device's own resolution
   (the scrcpy frame is smaller than the device screen).
-- **Next question** — after a tap it polls until the question text changes
-  (`TRANSITION_MIN_WAIT` 0.5 s, `TRANSITION_POLL` 0.3 s, `TRANSITION_TIMEOUT` 10 s).
-- **Not found** — if no answer matches, it asks you to answer on the device and press Enter.
+- **Start** — `main.py` waits for Enter before reading Q1, so open the quiz first (it can be
+  played only once).
+- **Next question** — after a tap it waits `TRANSITION_MIN_WAIT` (1 s), then polls every
+  `TRANSITION_POLL` (0.3 s) for question text. Text under `NEW_QUESTION_MAX_SIM` (0.8) similar
+  to the last question is new; text above it may still be the old screen (OCR varies by a letter
+  between frames), so it waits `TRANSITION_CONFIRM_WAIT` (1 s) and takes the next frame as the new
+  question. Gives up after `TRANSITION_TIMEOUT` (10 s).
+- **Not found** — if no answer matches, it reads one fresh frame (in case it caught the screen
+  mid-animation); if still nothing, it asks you to answer on the device and press Enter.
 
 ## Troubleshooting
 
