@@ -86,6 +86,18 @@ def get_adb(adb_path=None):
     return adb
 
 
+def device_id(adb) -> str:
+    """
+    Key for per-device profiles in each tool's config.json: the device's hardware
+    serial (ro.serialno), which stays the same over USB and Wi-Fi — the adb serial
+    becomes 'host:port' over Wi-Fi. Over USB the two are normally equal, so
+    profiles saved under the USB serial still match. Cached on the adb object.
+    """
+    if getattr(adb, '_lm_device_id', None) is None:
+        adb._lm_device_id = adb.get_hardware_serial()
+    return adb._lm_device_id
+
+
 # ---------------------------------------------------------------------------
 # Scrcpy window capture
 # ---------------------------------------------------------------------------

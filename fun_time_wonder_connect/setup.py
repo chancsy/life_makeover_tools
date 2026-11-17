@@ -11,7 +11,7 @@ Usage:
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from common.lm_adb import get_adb, get_scrcpy, setup_scrcpy, read_common_config
+from common.lm_adb import get_adb, get_scrcpy, setup_scrcpy, read_common_config, device_id
 
 SCRCPY_WINDOW_TITLE = 'fun_time_wonder_connect'  # must match main.py
 
@@ -149,7 +149,7 @@ def main():
     force_redo_hist = '--redo-hist' in sys.argv
 
     adb = get_adb()
-    serial = adb.device
+    serial = device_id(adb)  # profile key: hardware serial, same over USB and Wi-Fi
     screen_size = adb.get_screen_size()
 
     common = read_common_config()

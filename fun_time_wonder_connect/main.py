@@ -17,7 +17,7 @@
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from common.lm_adb import get_adb, get_scrcpy, read_common_config
+from common.lm_adb import get_adb, get_scrcpy, read_common_config, device_id
 
 import argparse
 import json
@@ -1089,9 +1089,9 @@ def main():
         adb = None
     else:
         adb = get_adb(adb_path=args.adb_path)
-        regions, _, empty_hist = load_device_config(CONFIG_PATH, adb.device)
+        regions, _, empty_hist = load_device_config(CONFIG_PATH, device_id(adb))
         if regions is None:
-            print(f'Device "{adb.device}" not in config. Run setup.py first.')
+            print(f'Device "{device_id(adb)}" not in config. Run setup.py first.')
             sys.exit(1)
 
     grid_region = regions['grid']

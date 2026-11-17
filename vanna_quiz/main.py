@@ -17,7 +17,7 @@
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from common.lm_adb import get_adb, get_scrcpy, read_common_config  # also wires lib-utils into sys.path
+from common.lm_adb import get_adb, get_scrcpy, read_common_config, device_id
 
 import argparse
 import difflib
@@ -450,9 +450,9 @@ def main():
         return
 
     adb = get_adb(adb_path=args.adb_path)
-    regions = load_regions_for_device(CONFIG_PATH, adb.device)
+    regions = load_regions_for_device(CONFIG_PATH, device_id(adb))
     if regions is None:
-        print(f'Device "{adb.device}" not in config. Run setup.py to register this device.')
+        print(f'Device "{device_id(adb)}" not in config. Run setup.py to register this device.')
         sys.exit(1)
 
     capture = None

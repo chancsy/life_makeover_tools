@@ -11,7 +11,7 @@ Usage:
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from common.lm_adb import get_adb, setup_scrcpy, read_common_config
+from common.lm_adb import get_adb, setup_scrcpy, read_common_config, device_id
 
 import json
 
@@ -43,7 +43,7 @@ def main():
         setup_scrcpy()
 
     adb = get_adb()
-    serial = adb.device
+    serial = device_id(adb)  # profile key: hardware serial, same over USB and Wi-Fi
     screen_size = adb.get_screen_size()
 
     cfg = load_config(CONFIG_PATH)
