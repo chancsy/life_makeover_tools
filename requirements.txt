@@ -1,2 +1,29 @@
-imagehash==4.3.2
-mss==10.2.0
+# Life Makeover Tools — pip install -r requirements.txt
+#
+# Also needs lib-utils, installed separately (see README) so this file never
+# replaces an editable install:
+#   pip install -e ../lib-utils        # local clone
+#   pip install git+https://github.com/chancsy/lib-utils.git
+#
+# External binaries: adb (platform-tools), scrcpy (optional), Tesseract-OCR (vanna_quiz).
+
+# Image processing (both tools)
+numpy>=2.3
+opencv-python>=5.0
+Pillow>=12.0
+
+# Fun Time Wonder Connect — card matching
+imagehash>=4.3.2
+
+# Vvanna Quiz — OCR + wiki answer fetch
+pytesseract>=0.3.13
+requests>=2.32
+beautifulsoup4>=4.15.0
+
+# scrcpy window capture (Windows) — mss grabs the window; WindowManager
+# (lib-utils win_automation_utils) requires the rest at construction
+mss>=10.2.0
+pywin32>=311
+pygetwindow>=0.0.9
+pyautogui>=0.9.54
+pycaw>=20251023
