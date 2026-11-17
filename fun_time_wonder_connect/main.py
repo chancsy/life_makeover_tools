@@ -6,8 +6,8 @@
 # First-time setup:
 #   python setup.py
 #
-# Usage:
-#   python main.py                       # scrcpy capture if configured, else adb screencap
+# Usage (see README.md):
+#   python main.py                       # menu, then play (scrcpy capture if found, else adb screencap)
 #   python main.py --adb                 # force adb screencap (low-speed fallback)
 #   python main.py --debug -s screenshot.png
 #
@@ -18,7 +18,7 @@ import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from common.lm_adb import get_scrcpy, open_capture
-from common.lm_tool import read_config, write_config, select_device, profile_regions
+from common.lm_tool import add_common_args, read_config, write_config, select_device, profile_regions
 
 import argparse
 import random
@@ -36,7 +36,6 @@ from PIL import Image
 
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), 'config.json')
 
-ADB_PATH = None
 
 SCRCPY_WINDOW_TITLE = 'fun_time_wonder_connect'  # fixed title passed to scrcpy --window-title on launch
 
@@ -1085,19 +1084,9 @@ def _save_pacing_target(target):
 
 def main():
     parser = argparse.ArgumentParser(description='Life Makeover -- Wonder Connect assistant')
-    parser.add_argument('--debug', '-d', action='store_true',
-                        help='Debug mode: annotate screenshot, no taps')
+    add_common_args(parser)
     parser.add_argument('--parse-debug', action='store_true',
                         help='Parse-debug mode: raw metrics, no merge logic, interactive pair verification')
-    parser.add_argument('--screenshot', '-s', metavar='PATH',
-                        help='Screenshot file for debug (implies --debug)')
-    parser.add_argument('--adb-path', metavar='PATH', default=ADB_PATH)
-    parser.add_argument('--adb', action='store_true',
-                        help='Force adb screencap for screenshots (low-speed fallback). '
-                             'Default: scrcpy window capture when scrcpy is found (config exe or PATH).')
-    parser.add_argument('--connect', metavar='HOST[:PORT]',
-                        help='Use this device over Wi-Fi (saved; see ../adb_wireless.py). '
-                             'Default: attached device, else the saved Wi-Fi address')
     parser.add_argument('--no-pacing', action='store_true',
                         help='Disable inter-pair delays (baseline timing run to measure raw processing speed).')
     args = parser.parse_args()

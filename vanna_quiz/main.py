@@ -1,24 +1,15 @@
-# Quiz Game Assistant — Life Makeover Vvanna Quiz (ADB automation)
+# Quiz Game Assistant — Life Makeover Vvanna Quiz (ADB automation). See README.md.
 #
-# Dependencies:
-#   pip install opencv-python pytesseract requests beautifulsoup4 numpy Pillow
-#   Tesseract-OCR binary: https://github.com/tesseract-ocr/tesseract
-#
-# First-time setup:
-#   python setup.py           ← register device + define screen regions → config.json
-#
-# Usage:
-#   python main.py
-#
-# Debug mode (no device needed):
-#   Set DEBUG_MODE = True and DEBUG_SCREENSHOT = 'path/to/screenshot.png'
-#   Annotated output saved alongside the screenshot as *_debug_q1.png
+#   python setup.py                     # first time per device: screen regions -> config.json
+#   python main.py                      # answer a quiz (scrcpy capture if found, else adb screencap)
+#   python main.py --debug              # read one question live, save an annotated image; no tap
+#   python main.py --debug -s shot.png  # same on a saved screenshot (no device needed)
 
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from common.lm_adb import open_capture
-from common.lm_tool import read_config, write_config, select_device, profile_regions
+from common.lm_tool import add_common_args, read_config, write_config, select_device, profile_regions
 
 import argparse
 import difflib
@@ -35,8 +26,6 @@ from bs4 import BeautifulSoup
 # ---------------------------------------------------------------------------
 
 ANSWER_URL = 'https://life-makeover.fandom.com/wiki/Shining_Journey/Vvanna_Quiz'
-
-ADB_PATH = None  # None = use system PATH; or r'C:\Android\platform-tools\adb.exe'
 
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), 'config.json')
 
@@ -416,17 +405,7 @@ class QuizAssistant:
 
 def main():
     parser = argparse.ArgumentParser(description='Life Makeover — Vvanna Quiz assistant')
-    parser.add_argument('--debug', '-d', action='store_true',
-                        help='Debug mode: annotate screenshot instead of tapping')
-    parser.add_argument('--screenshot', '-s', metavar='PATH',
-                        help='Screenshot file to use in debug mode (implies --debug)')
-    parser.add_argument('--adb-path', metavar='PATH', default=ADB_PATH,
-                        help='Path to adb executable (default: use system PATH)')
-    parser.add_argument('--adb', action='store_true',
-                        help='Force adb screencap instead of scrcpy window capture')
-    parser.add_argument('--connect', metavar='HOST[:PORT]',
-                        help='Use this device over Wi-Fi (saved; see ../adb_wireless.py). '
-                             'Default: attached device, else the saved Wi-Fi address')
+    add_common_args(parser)
     parser.add_argument('--fetch-answers', action='store_true',
                         help='Fetch latest answers from wiki and update config.json, then exit')
     args = parser.parse_args()

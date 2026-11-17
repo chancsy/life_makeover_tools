@@ -6,7 +6,8 @@ A tool's config.json holds "devices": {serial: profile}, keyed by the hardware s
 regions as screen fractions (x1, y1, x2, y2). A "default" profile is used for unregistered devices.
 
 Usage:
-    from common.lm_tool import read_config, select_device, profile_regions
+    from common.lm_tool import add_common_args, select_device, profile_regions
+    args = add_common_args(argparse.ArgumentParser()).parse_args()
     cfg, adb, profile = select_device(args, CONFIG_PATH)   # --debug -s: adb None, first profile
     regions = profile_regions(profile)
 """
@@ -18,6 +19,25 @@ from utils import UtilityFunctions
 from common.lm_adb import device_id, get_adb
 
 _utils = UtilityFunctions()
+
+
+def add_common_args(parser):
+    """Add the options every tool's main.py takes: --debug/-d, --screenshot/-s, --adb, --connect,
+    --adb-path. Returns the parser."""
+    parser.add_argument('--debug', '-d', action='store_true',
+                        help='Debug: no taps; save an annotated screenshot')
+    parser.add_argument('--screenshot', '-s', metavar='PATH',
+                        help='Debug on a saved screenshot (implies --debug; no device needed; '
+                             'uses the first profile in config.json)')
+    parser.add_argument('--adb', action='store_true',
+                        help='Take frames with adb screencap instead of scrcpy capture (much slower). '
+                             'Default: scrcpy when found (config exe or PATH)')
+    parser.add_argument('--connect', metavar='HOST[:PORT]',
+                        help='Use this device over Wi-Fi (saved; see ../adb_wireless.py). '
+                             'Default: attached device, else the saved Wi-Fi address')
+    parser.add_argument('--adb-path', metavar='PATH',
+                        help='adb to use (default: the adb bundled with scrcpy, else adb on PATH)')
+    return parser
 
 
 def read_config(path) -> dict:
