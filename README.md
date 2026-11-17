@@ -82,6 +82,35 @@ adb bundled with scrcpy, so both share one adb client.
    fractions and scale taps by `adb.get_screen_size()` (the scrcpy frame is smaller than the device)
 5. Add a row to the Tools table above
 
+## Platform Support
+
+**Windows only** (tested on Windows 11). Only the scrcpy *window capture* is Windows-specific;
+the rest is cross-platform in principle but untested elsewhere:
+
+| Part | Windows-specific? |
+|---|---|
+| scrcpy window capture — lib-utils `WindowManager.capture_window` (finds the window with `pygetwindow`, its client area with `win32gui`; `mss` grabs the pixels) | **Yes** — `WindowManager` refuses to start elsewhere |
+| adb control, Wi-Fi (`AdbUtils`), `--adb` screenshots | No |
+| OCR (Tesseract), card matching (OpenCV, imagehash) | No |
+| Region setup window (tkinter) | No |
+| `requirements.txt` | Windows-only packages are marked `sys_platform == "win32"`, so it installs elsewhere |
+
+### Adding macOS / Linux support (notes, untested)
+
+- **Today, elsewhere:** run every tool with `--adb`. `setup.py` always writes a `scrcpy` entry to
+  `common/config.json`, and the tools then try scrcpy capture, which fails off Windows. First fix:
+  default to adb screenshots when not on Windows (`main.py` `use_scrcpy`, `setup.py` `_make_capture`).
+- **Window capture per OS** — `capture_window(title)` needs the window's client-area rectangle; `mss`
+  already grabs pixels on all three systems:
+  - macOS: Quartz `CGWindowListCopyWindowInfo` for the window bounds (needs the Screen Recording permission);
+  - Linux X11: `xdotool search --name` / EWMH for the window geometry;
+  - Linux Wayland: capturing another app's window isn't generally allowed — use the option below.
+- **Linux alternative without window capture:** `scrcpy --v4l2-sink=/dev/videoN --no-video-playback`
+  streams the device to a virtual camera (`v4l2loopback`), read with `cv2.VideoCapture` — full device
+  resolution, no window needed.
+- **scrcpy on macOS / Linux doesn't bundle adb:** the tools then use `adb` on PATH (already handled).
+- Region coordinates are screen fractions and taps are scaled by the device size, so no change there.
+
 ## Dependencies
 
 ### lib-utils

@@ -20,10 +20,10 @@ pytesseract>=0.3.13
 requests>=2.32
 beautifulsoup4>=4.15.0
 
-# scrcpy window capture (Windows) — mss grabs the window; WindowManager
+# scrcpy window capture (Windows only) — mss grabs the window; WindowManager
 # (lib-utils win_automation_utils) requires the rest at construction
 mss>=10.2.0
-pywin32>=311
-pygetwindow>=0.0.9
-pyautogui>=0.9.54
-pycaw>=20251023
+pywin32>=311; sys_platform == "win32"
+pygetwindow>=0.0.9; sys_platform == "win32"
+pyautogui>=0.9.54; sys_platform == "win32"
+pycaw>=20251023; sys_platform == "win32"
