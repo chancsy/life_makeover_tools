@@ -85,6 +85,57 @@ def first_profile(cfg):
     return serial, devices[serial]
 
 
+def register_device(config_path, region_names, screen_name, redo=False):
+    """setup.py's device registration, shared by the tools.
+
+    Asks for the shared scrcpy settings (first time, or redo), connects, and when this device has
+    no profile yet (or redo): asks for a friendly name, waits until `screen_name` is on screen,
+    lets the user mark `region_names` (RegionSetupTool) and saves the new profile.
+
+    Returns (cfg, adb, profile, is_new): profile is this device's saved entry in cfg['devices'],
+    is_new is True when its regions were just marked. Returns None if region marking was left
+    incomplete (nothing saved). Tool-specific keys: add them to profile, then write_config()."""
+    from common.lm_adb import read_common_config, setup_scrcpy
+    from utils.tools.region_setup import RegionSetupTool   # tkinter GUI: only needed here
+
+    if not read_common_config().get('scrcpy') or redo:
+        setup_scrcpy()
+
+    adb = get_adb()
+    serial = device_id(adb)  # profile key: hardware serial, same over USB and Wi-Fi
+    screen_size = adb.get_screen_size()
+
+    cfg = read_config(config_path)
+    devices = cfg.setdefault('devices', {})
+
+    if serial in devices and not redo:
+        profile = devices[serial]
+        size = profile.get('screen_size') or ['?', '?']
+        print(f'Device "{profile.get("name", serial)}" ({serial}) already configured '
+              f'(screen {size[0]}×{size[1]}). Run with --redo to reconfigure.')
+        return cfg, adb, profile, False
+
+    print(f'\nDevice: {serial}  |  Screen: {screen_size[0]}×{screen_size[1]}')
+    name = input('Optional friendly name for this device (Enter to skip): ').strip() or serial
+
+    print(f'\nOpen {screen_name} on the device, then press Enter here.')
+    input('Press Enter when ready...')
+
+    regions = RegionSetupTool(region_names, adb=adb).run()
+    if len(regions) < len(region_names):
+        print(f'Setup incomplete — only {len(regions)}/{len(region_names)} regions defined. Not saved.')
+        return None
+
+    profile = devices[serial] = {
+        'name': name,
+        'screen_size': list(screen_size) if screen_size else [],
+        'regions': {k: list(v) for k, v in regions.items()},
+    }
+    write_config(config_path, cfg)
+    print(f'Config saved → {config_path}')
+    return cfg, adb, profile, True
+
+
 def select_device(args, config_path):
     """The device and profile for a tool's main.py: (cfg, adb, profile).
 
