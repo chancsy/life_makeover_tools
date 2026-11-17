@@ -210,15 +210,13 @@ class QuizAssistant:
         """Tap inside a region. Regions are stored as fractions of the screen, so they are
         scaled to device pixels — never to screenshot pixels, which differ under scrcpy capture
         (the mirror window is usually smaller than the device resolution)."""
-        x1p, y1p, x2p, y2p = self.reader.regions[key]
-        if self._device_size:
-            w, h = self._device_size
-        else:
+        size = self._device_size
+        if not size:
             # Device size unknown: screenshot pixels are only correct for adb screencap.
-            h, w = screenshot.shape[:2]
+            size = (screenshot.shape[1], screenshot.shape[0])
             if self._capture is not None:
                 print('  [WARN] device screen size unknown — tapping in screenshot pixels, may miss under scrcpy')
-        self.adb.tap_in_region(int(x1p * w), int(y1p * h), int(x2p * w), int(y2p * h))
+        self.adb.tap_in_fraction_region(self.reader.regions[key], size)
 
     def _take_screenshot(self):
         if self._capture is not None:

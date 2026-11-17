@@ -154,17 +154,11 @@ class GridParser:
 
     def _color_hist(self, crop_bgr):
         """Card-type matching: center crop to focus on symbol color, not border."""
-        inner = self._center_crop(crop_bgr)
-        hsv = cv2.cvtColor(inner, cv2.COLOR_BGR2HSV)
-        hists = []
-        for ch, bins in enumerate([180, 256, 256]):
-            h = cv2.calcHist([hsv], [ch], None, [bins], [0, bins])
-            cv2.normalize(h, h)
-            hists.append(h)
-        return hists
+        return self._empty_hist_compute(self._center_crop(crop_bgr))
 
     def _empty_hist_compute(self, crop_bgr):
-        """Empty-cell detection: full crop — empty cells are uniform, full crop is most distinctive."""
+        """Normalized H, S, V histograms of a crop. Empty-cell detection uses the full crop
+        (empty cells are uniform, the full crop is most distinctive); card matching the centre."""
         hsv = cv2.cvtColor(crop_bgr, cv2.COLOR_BGR2HSV)
         hists = []
         for ch, bins in enumerate([180, 256, 256]):
@@ -579,15 +573,11 @@ class GameAssistant:
         if self.reshuffle_btn is None:
             print('  [reshuffle] no button region configured, skipping tap.')
             return
-        if self._device_size:
-            dw, dh = self._device_size
-        elif self._capture_size:
-            dw, dh = self._capture_size
-        else:
+        size = self._device_size or self._capture_size
+        if not size:
             print('  [reshuffle] no size info for tap, skipping.')
             return
-        x1p, y1p, x2p, y2p = self.reshuffle_btn
-        self.adb.tap_in_region(int(x1p*dw), int(y1p*dh), int(x2p*dw), int(y2p*dh))
+        self.adb.tap_in_fraction_region(self.reshuffle_btn, size)
         print('  [reshuffle] tapped reshuffle button.')
 
     def _tap_cell(self, centers, r, c):
