@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.6.1] — 2026-11-17
+
+### Fixed
+- **Taps missed the answer under scrcpy capture** — the tap box was computed in screenshot pixels, but the scrcpy mirror window is usually smaller than the device resolution, so taps landed up and to the left of the chosen answer. Taps now scale the stored region fractions by the device screen size (`QuizAssistant._tap_region`), correct for both scrcpy and adb screencap.
+
+### Removed
+- `QuizScreenReader.get_region_px` — no longer used
+
+---
+
 ## [0.6.0] — 2026-06-23
 
 ### Added

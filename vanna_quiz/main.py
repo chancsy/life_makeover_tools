@@ -227,20 +227,30 @@ class QuizScreenReader:
         """OCR the question region only — cheap poll for transition detection."""
         return self._ocr(self._crop_region(screenshot, 'question')[0], single_line=False)
 
-    def get_region_px(self, screenshot, key):
-        _, bbox = self._crop_region(screenshot, key)
-        return bbox
-
-
 
 # ---------------------------------------------------------------------------
 
 class QuizAssistant:
-    def __init__(self, adb, loader, reader, capture=None):
+    def __init__(self, adb, loader, reader, capture=None, device_size=None):
         self.adb = adb
         self.loader = loader
         self.reader = reader
         self._capture = capture
+        self._device_size = device_size  # (w, h) in device pixels — taps are always in device pixels
+
+    def _tap_region(self, key, screenshot):
+        """Tap inside a region. Regions are stored as fractions of the screen, so they are
+        scaled to device pixels — never to screenshot pixels, which differ under scrcpy capture
+        (the mirror window is usually smaller than the device resolution)."""
+        x1p, y1p, x2p, y2p = self.reader.regions[key]
+        if self._device_size:
+            w, h = self._device_size
+        else:
+            # Device size unknown: screenshot pixels are only correct for adb screencap.
+            h, w = screenshot.shape[:2]
+            if self._capture is not None:
+                print('  [WARN] device screen size unknown — tapping in screenshot pixels, may miss under scrcpy')
+        self.adb.tap_in_region(int(x1p * w), int(y1p * h), int(x2p * w), int(y2p * h))
 
     def _take_screenshot(self):
         if self._capture is not None:
@@ -388,9 +398,8 @@ class QuizAssistant:
                         break
                     screenshot = None  # force fresh capture after manual answer
                 else:
-                    bbox = self.reader.get_region_px(screenshot, label)
                     t0 = time.perf_counter()
-                    self.adb.tap_in_region(bbox[0], bbox[1], bbox[2], bbox[3])
+                    self._tap_region(label, screenshot)
                     print(f'  [time] tap:           {(time.perf_counter()-t0)*1000:5.0f} ms')
                     screenshot = self._wait_for_new_question(prev_question)
 
@@ -453,7 +462,8 @@ def main():
 
     loader = QuizAnswerLoader(ANSWER_URL, CONFIG_PATH)
     reader = QuizScreenReader(regions)
-    assistant = QuizAssistant(adb=adb, loader=loader, reader=reader, capture=capture)
+    assistant = QuizAssistant(adb=adb, loader=loader, reader=reader, capture=capture,
+                              device_size=adb.get_screen_size())
     assistant.run(debug=debug, screenshot_path=screenshot_path)
 
 
