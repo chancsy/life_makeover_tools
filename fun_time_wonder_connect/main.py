@@ -198,7 +198,9 @@ class GridParser:
         return hists
 
     def _hist_sim(self, h1, h2):
-        return sum(cv2.compareHist(a, b, cv2.HISTCMP_CORREL) for a, b in zip(h1, h2)) / 3
+        # reshape b to a's shape: OpenCV 5 calcHist returns (bins,), OpenCV 4 (bins, 1); the
+        # empty-cell histogram loaded from config.json must match whichever this runtime produces
+        return sum(cv2.compareHist(a, b.reshape(a.shape), cv2.HISTCMP_CORREL) for a, b in zip(h1, h2)) / 3
 
     def _board_diff(self, img1, img2):
         """Mean pixel diff of the grid area — used for reshuffle change detection."""
