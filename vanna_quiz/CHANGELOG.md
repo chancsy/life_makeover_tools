@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.6.2] — 2026-11-17
+
+### Fixed
+- **Two-line answers were garbled by OCR** and could pick the wrong box: answer regions were read in Tesseract single-line mode (`--psm 7`), but answers wrap onto two lines. On a real Q1 frame, "Redeem with Basic Color Chart" read as "ee chor", so had it been the correct answer, the fuzzy match would have chosen D ("Redeem with Basic …") instead of C. All regions now use block mode (`--psm 6`) with line breaks joined into single spaces. Measured on the same frame at scrcpy (810×1296) and adb (1800×2880) resolution: answer-text similarity 0.71 / 0.74 → 1.00, right box for every possible answer 3/4 → 4/4; OCR total 1.32 s → 1.18 s live.
+
+### Changed
+- `QuizScreenReader._ocr()` — `single_line` parameter removed; the question text is also line-joined, so wrapped questions compare cleanly with the one-line answer bank
+
+---
+
 ## [0.6.1] — 2026-11-17
 
 ### Fixed

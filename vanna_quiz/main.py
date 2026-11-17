@@ -206,26 +206,30 @@ class QuizScreenReader:
         x2, y2 = int(x2p * w), int(y2p * h)
         return img[y1:y2, x1:x2], (x1, y1, x2, y2)
 
-    def _ocr(self, crop, single_line=False):
+    def _ocr(self, crop):
+        """OCR as a block of text (--psm 6) with line breaks joined into single spaces.
+
+        Questions and answers both wrap onto two lines; single-line mode (--psm 7) garbled
+        wrapped answers ("Redeem with Basic Color Chart" -> "ee chor") badly enough to pick
+        the wrong box. Joined lines also compare cleanly against the one-line answer bank."""
         gray = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY)
         _, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-        psm = '7' if single_line else '6'
-        return pytesseract.image_to_string(thresh, config=f'--psm {psm}').strip()
+        return ' '.join(pytesseract.image_to_string(thresh, config='--psm 6').split())
 
     def read_screen(self, screenshot):
         result = {}
         t0 = time.perf_counter()
-        result['question'] = self._ocr(self._crop_region(screenshot, 'question')[0], single_line=False)
+        result['question'] = self._ocr(self._crop_region(screenshot, 'question')[0])
         print(f'  [time] OCR question:  {(time.perf_counter()-t0)*1000:5.0f} ms')
         for label in ('A', 'B', 'C', 'D'):
             t0 = time.perf_counter()
-            result[label] = self._ocr(self._crop_region(screenshot, label)[0], single_line=True)
+            result[label] = self._ocr(self._crop_region(screenshot, label)[0])
             print(f'  [time] OCR {label}:         {(time.perf_counter()-t0)*1000:5.0f} ms')
         return result
 
     def read_question(self, screenshot):
         """OCR the question region only — cheap poll for transition detection."""
-        return self._ocr(self._crop_region(screenshot, 'question')[0], single_line=False)
+        return self._ocr(self._crop_region(screenshot, 'question')[0])
 
 
 # ---------------------------------------------------------------------------
