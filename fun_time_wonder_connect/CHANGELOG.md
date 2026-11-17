@@ -1,5 +1,17 @@
 # Changelog — Fun Time Wonder Connect
 
+## [0.6.0] — 2026-11-17
+
+### Added
+- **Target game time in the main menu** — `t  Target time: 14.0s  (full board ~12.9-14.6s)`: enter a new target in seconds; the menu shows the full-board finish window it gives (pause budget × the per-game speed factor, before reshuffle waits). Saved in `config.json` as `"pacing": {"target": ...}`; default 14 s. Below ~6.2 s (pure processing time for 24 pairs) there are no pauses. Ignored with `--no-pacing`
+- `PacingController.DEFAULT_TARGET`, `PROCESSING_PER_PAIR`, `SPEED_RANGE` constants and `expected_range(target, pairs=24)`; `[pacing]` start line prints the target
+
+### Fixed
+- Game start crashed on OpenCV 5 (`compareHist` assert) when `config.json` had a calibrated empty-cell histogram: OpenCV 5 `calcHist` returns `(bins,)`, the loaded histogram was `(bins, 1)` (commit `a719c71`)
+- `PacingController` docstring described ±25% jitter and a 10-18 s target; now matches the code (±3% jitter, per-game speed factor)
+
+---
+
 ## [0.5.0] — 2026-06-23
 
 ### Added

@@ -507,15 +507,28 @@ class PacingController:
       - Pairs 6-N-6 : slow (working through the board)
       - Last 6 pairs: fast (finishing up)
 
-    Target total game time: 10-18s. Delays are pre-distributed across pairs
-    by weight, with ±25% random jitter per pair. When a reshuffle consumes
-    wall time, remaining delays are scaled down proportionally.
+    Total game time aims at `target` seconds (default 14, changeable from the
+    main menu, saved in config.json). The pause budget = target minus the
+    processing time (PROCESSING_PER_PAIR per pair) is pre-distributed across
+    pairs by weight, scaled by one random speed factor per game (SPEED_RANGE)
+    plus ±3% jitter per pair. When a reshuffle consumes wall time, remaining
+    delays are scaled down proportionally.
     """
 
     FAST_START = 5
     FAST_END   = 6
+    DEFAULT_TARGET      = 14.0
+    PROCESSING_PER_PAIR = 0.26            # measured with --no-pacing (6.2 s / 24 pairs)
+    SPEED_RANGE         = (0.857, 1.071)  # per-game factor on the pause budget
 
-    def __init__(self, total_pairs, target=14.0, processing_per_pair=0.26):
+    @classmethod
+    def expected_range(cls, target, pairs=24):
+        """(min, max) total seconds a game of `pairs` pairs should take for `target`, before reshuffles."""
+        work = pairs * cls.PROCESSING_PER_PAIR
+        budget = max(0.0, target - work)
+        return work + budget * cls.SPEED_RANGE[0], work + budget * cls.SPEED_RANGE[1]
+
+    def __init__(self, total_pairs, target=DEFAULT_TARGET, processing_per_pair=PROCESSING_PER_PAIR):
         self._total = max(1, total_pairs)
         self._pair  = 0
         budget = max(0.0, target - self._total * processing_per_pair)
@@ -535,7 +548,7 @@ class PacingController:
         self._delays = [budget * w / total_w for w in weights]
         # Global speed factor chosen once per game — drives total-time variance.
         # Per-pair jitter alone averages out over 24 pairs; this does not.
-        self._speed = random.uniform(0.857, 1.071)  # maps total to ~12s–15s
+        self._speed = random.uniform(*self.SPEED_RANGE)  # default target 14 s -> ~12.9–14.6 s
 
     def record_reshuffle(self, seconds_lost):
         """Scale down remaining delays to compensate for time lost to reshuffle."""
@@ -771,7 +784,8 @@ class GameAssistant:
         print(f'  [time] parse total:{(time.perf_counter()-t0)*1000:5.0f} ms')
         return grid, centers, hashes
 
-    def run(self, debug=False, screenshot_path=None, no_pacing=False):
+    def run(self, debug=False, screenshot_path=None, no_pacing=False,
+            pacing_target=PacingController.DEFAULT_TARGET):
         grid = None
         centers = None
         pacing = None
@@ -804,8 +818,9 @@ class GameAssistant:
                     timing_log.append(('START', 0.0))
                     occupied = sum(1 for r in range(self.parser.rows)
                                    for c in range(self.parser.cols) if grid[r][c] != 0)
-                    pacing = PacingController(occupied // 2)
-                    print(f'  [pacing] speed factor={pacing._speed:.3f}  (budget ×{pacing._speed:.0%})')
+                    pacing = PacingController(occupied // 2, target=pacing_target)
+                    print(f'  [pacing] target={pacing_target:.1f}s  speed factor={pacing._speed:.3f}  '
+                          f'(budget ×{pacing._speed:.0%})')
                     self._print_grid(grid)
 
             # ── Board clear? ──
@@ -1012,12 +1027,13 @@ class GameAssistant:
 
 # ---------------------------------------------------------------------------
 
-def _menu(use_scrcpy, capture):
+def _menu(use_scrcpy, capture, pacing_target, no_pacing=False):
     """
     Interactive startup menu. Returns one of:
       'launch'          — (re)launch scrcpy
       'start'           — start game (scans board for empty cells, then plays)
       'parse_debug'     — enter parse-debug mode
+      'target'          — change the target game time
       ('exit', 'keep')  — exit, leave scrcpy running
       ('exit', 'stop')  — exit, stop scrcpy (only if we launched it)
     """
@@ -1042,6 +1058,11 @@ def _menu(use_scrcpy, capture):
             opts['n'] = 'start'
             opts['d'] = 'parse_debug'
 
+        lo, hi = PacingController.expected_range(pacing_target)
+        note = '  [ignored: --no-pacing]' if no_pacing else ''
+        print(f'  t  Target time: {pacing_target:.1f}s  (full board ~{lo:.1f}-{hi:.1f}s){note}')
+        opts['t'] = 'target'
+
         if use_scrcpy and up and owned:
             print('  q  Exit  (keep scrcpy)')
             print('  x  Exit  (stop scrcpy)')
@@ -1055,6 +1076,35 @@ def _menu(use_scrcpy, capture):
         if choice in opts:
             return opts[choice]
         print('  Invalid choice.')
+
+
+def _ask_target(current):
+    """Prompt for a new target game time; returns the new value, or `current` if unchanged / invalid."""
+    min_total = PacingController.expected_range(0)[0]   # pure processing time, no pauses
+    raw = input(f'  New target in seconds (Enter = keep {current:.1f}): ').strip()
+    if not raw:
+        return current
+    try:
+        target = float(raw)
+    except ValueError:
+        print('  Not a number - unchanged.')
+        return current
+    if not 0 < target <= 300:
+        print('  Must be between 0 and 300 seconds - unchanged.')
+        return current
+    if target <= min_total:
+        print(f'  Note: below ~{min_total:.1f}s there are no pauses - the game runs as fast as it can.')
+    lo, hi = PacingController.expected_range(target)
+    print(f'  Target set to {target:.1f}s (full board ~{lo:.1f}-{hi:.1f}s, plus any reshuffle waits).')
+    return target
+
+
+def _save_pacing_target(target):
+    """Store the target in this tool's config.json (re-read first, so other keys are kept)."""
+    cfg = _read_config(CONFIG_PATH)
+    cfg.setdefault('pacing', {})['target'] = target
+    with open(CONFIG_PATH, 'w') as f:
+        json.dump(cfg, f, indent=2)
 
 
 def main():
@@ -1125,10 +1175,19 @@ def main():
             assistant.run(debug=True, screenshot_path=screenshot_path)
         return
 
-    while True:
-        action = _menu(use_scrcpy, capture)
+    pacing_target = float(cfg.get('pacing', {}).get('target', PacingController.DEFAULT_TARGET))
 
-        if action == 'launch':
+    while True:
+        action = _menu(use_scrcpy, capture, pacing_target, no_pacing=args.no_pacing)
+
+        if action == 'target':
+            new = _ask_target(pacing_target)
+            if new != pacing_target:
+                pacing_target = new
+                _save_pacing_target(new)
+                print('  Saved to config.json.')
+
+        elif action == 'launch':
             capture = get_scrcpy(cfg, serial=adb.device, adb=adb, window_title=SCRCPY_WINDOW_TITLE)
 
         elif action == 'start':
@@ -1142,7 +1201,7 @@ def main():
                 if screenshot is not None:
                     n = grid_parser.scan_empty_cells(screenshot)
                     print(f'  Found {n} pre-cleared cell(s).')
-            assistant.run(no_pacing=args.no_pacing)
+            assistant.run(no_pacing=args.no_pacing, pacing_target=pacing_target)
 
         elif action == 'parse_debug':
             assistant = GameAssistant(adb, grid_parser, link_checker,
